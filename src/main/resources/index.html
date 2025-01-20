@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grid View</title>
+    <style>
+        body {
+          font-family: Arial, sans-serif;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          margin: 20px;
+        }
+        .grid-container {
+          display: grid;
+          grid-template-columns: repeat(2, auto);
+          grid-template-rows: auto auto;
+          gap: 10px;
+        }
+        .grid {
+          display: grid;
+          margin: 10px;
+          gap: 5px;
+        }
+        .cell {
+          width: 50px;
+          height: 50px;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          border: 1px solid black;
+          cursor: pointer;
+          font-size: 24px;
+        }
+        .controls {
+          width: 100%;
+          margin-bottom: 20px;
+          text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="controls">
+    <label for="gridSize">Grid Size: </label>
+    <input type="number" id="gridSize" value="3" min="2" max="10">
+    <button onclick="resetGrids()">Reset</button>
+</div>
+
+<div class="grid-container">
+    <div class="grid" id="grid1"></div>
+    <div class="grid" id="grid2"></div>
+    <div class="grid" id="grid3"></div>
+</div>
+
+<script>
+    const symbols = ["", "✔️", "❌"];
+
+    function createGrid(gridElement, size) {
+      gridElement.style.gridTemplateColumns = `repeat(${size}, 50px)`;
+      gridElement.style.gridTemplateRows = `repeat(${size}, 50px)`;
+      gridElement.innerHTML = "";
+      for (let i = 0; i < size * size; i++) {
+        const cell = document.createElement("div");
+        cell.classList.add("cell");
+        cell.addEventListener("click", () => cycleSymbol(cell));
+        gridElement.appendChild(cell);
+      }
+    }
+
+    function cycleSymbol(cell) {
+      const currentSymbol = cell.textContent;
+      const currentIndex = symbols.indexOf(currentSymbol);
+      cell.textContent = symbols[(currentIndex + 1) % symbols.length];
+    }
+
+    function resetGrids() {
+      const size = parseInt(document.getElementById("gridSize").value, 10);
+      createGrid(document.getElementById("grid1"), size);
+      createGrid(document.getElementById("grid2"), size);
+      createGrid(document.getElementById("grid3"), size);
+    }
+
+    // Initialize grids on page load
+    document.addEventListener("DOMContentLoaded", () => {
+      resetGrids();
+    });
+</script>
+
+</body>
+</html>
