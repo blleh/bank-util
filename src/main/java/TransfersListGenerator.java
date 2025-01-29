@@ -15,6 +15,8 @@ import java.util.stream.Collectors;
 
 public class TransfersListGenerator {
 
+    public static final List<String> PENDING_STATUS = Arrays.asList("PENDING", "TO PAY");
+
     public void generate(String inputFilePath, String businessTripFilePath, String outputFilePath) {
         // Parse data from input files
         List<InvoiceDetails> invoiceDetails = readCsv(inputFilePath);
@@ -41,7 +43,7 @@ public class TransfersListGenerator {
 
             return csvParser.getRecords().stream()
                     .filter(record -> record.get("Amount").replace(",", "").trim().startsWith("PLN")
-                            && record.get("Status").trim().equalsIgnoreCase("PENDING"))
+                            && PENDING_STATUS.contains(record.get("Status").trim()))
                     .map(record -> {
                         String companyName = sanitize(record.get("Company name (Invoice)").trim());
                         String bankAccount = sanitize(record.get("Bank account number").trim());
