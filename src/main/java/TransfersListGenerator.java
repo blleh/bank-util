@@ -1,35 +1,21 @@
-package localutils;
-
+import model.BankTransferDetails;
+import model.BusinessTripDetails;
+import model.InvoiceDetails;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
-import org.apache.commons.csv.CSVRecord;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-public class CsvConverter {
-    public static void main(String[] args) {
-        if (args.length < 1) {
-            System.err.println("Usage: java CsvConverter <input-file> [business-trip-file]");
-            System.exit(1);
-        }
+public class TransfersListGenerator {
 
-        // Prepare date-stamped output file
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("ddMMyyyy");
-        String formattedDate = LocalDate.now().format(formatter);
-
-        String inputFilePath = args[0];
-        String businessTripFilePath = args.length > 1 ? args[1] : null;
-        String outputFilePath = formattedDate + "_invoice.ebgz";
-
+    public void generate(String inputFilePath, String businessTripFilePath, String outputFilePath) {
         // Parse data from input files
         List<InvoiceDetails> invoiceDetails = readCsv(inputFilePath);
         List<BankTransferDetails> outputData = convertData(invoiceDetails);
@@ -44,7 +30,7 @@ public class CsvConverter {
         writeCsv(outputFilePath, outputData);
     }
 
-    private static List<InvoiceDetails> readCsv(String filePath) {
+    private List<InvoiceDetails> readCsv(String filePath) {
         try (Reader reader = Files.newBufferedReader(Paths.get(filePath), StandardCharsets.UTF_8);
              CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT
                      .withDelimiter(';')
@@ -95,7 +81,7 @@ public class CsvConverter {
         }
     }
 
-    private static List<BusinessTripDetails> readBusinessTripCsv(String filePath) {
+    private List<BusinessTripDetails> readBusinessTripCsv(String filePath) {
         try (Reader reader = Files.newBufferedReader(Paths.get(filePath), StandardCharsets.UTF_8);
              CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT
                      .withDelimiter(';')
@@ -120,7 +106,7 @@ public class CsvConverter {
         }
     }
 
-    private static List<BankTransferDetails> convertData(List<InvoiceDetails> invoiceDetails) {
+    private List<BankTransferDetails> convertData(List<InvoiceDetails> invoiceDetails) {
         return invoiceDetails.stream()
                 .map(data -> new BankTransferDetails(
                         null, // Short name empty
@@ -133,7 +119,7 @@ public class CsvConverter {
                 .collect(Collectors.toList());
     }
 
-    private static List<BankTransferDetails> convertBusinessTripData(
+    private List<BankTransferDetails> convertBusinessTripData(
             List<BusinessTripDetails> businessTrips, List<InvoiceDetails> existingInvoiceDetails
     ) {
         // Validate with existing bank accounts
@@ -154,7 +140,7 @@ public class CsvConverter {
                 .collect(Collectors.toList());
     }
 
-    private static void writeCsv(String filePath, List<BankTransferDetails> data) {
+    private void writeCsv(String filePath, List<BankTransferDetails> data) {
         try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(filePath), StandardCharsets.UTF_8);
              CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT.withDelimiter(';'))) {
 
@@ -175,36 +161,7 @@ public class CsvConverter {
         }
     }
 
-    private static String sanitize(String input) {
+    private String sanitize(String input) {
         return input.replaceAll("\\r?\\n", " ").trim();
     }
-
-    // Define input record types
-    record InvoiceDetails(
-            String invoiceNumber,
-            String companyName,
-            String bankAccount,
-            String amount,
-            String title,
-            boolean isReimbursement
-    ) {}
-
-    record BusinessTripDetails(
-            String name,
-            String bankAccount,
-            String amount,
-            String tripNumber
-    ) {}
-
-    // Define output record
-    record BankTransferDetails(
-            String shortCompanyName,
-            String bankAccount,
-            String companyAddressLine1,
-            String companyAddressLine2,
-            String companyAddressLine3,
-            String companyAddressLine4,
-            String title,
-            String transferAmount
-    ) {}
 }
