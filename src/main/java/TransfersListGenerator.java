@@ -58,7 +58,7 @@ public class TransfersListGenerator {
 
                             if (matcher.find()) {
                                 companyName = matcher.group(1).trim();
-                                bankAccount = matcher.group(2).replaceAll("\\s", ""); // Remove spaces from account
+                                bankAccount = matcher.group(2); // Remove spaces from account
                                 isReimbursement = true;
                             }
                         }
@@ -93,11 +93,11 @@ public class TransfersListGenerator {
              )) {
 
             return csvParser.getRecords().stream()
-                    .filter(record -> record.get("Status").trim().equalsIgnoreCase("APPROVED"))
+                    .filter(record -> PENDING_STATUS.contains(record.get("Status").trim()))
                     .map(record -> new BusinessTripDetails(
                             sanitize(record.get("Name").trim()),
-                            sanitize(record.get("Bank account number").trim().replaceAll("\\s", "")),
-                            sanitize(record.get("Amount").replace(",", "").trim()),
+                            sanitize(record.get("Bank account number").trim()),
+                            sanitize(record.get("Amount").replace("PLN", "").trim()),
                             sanitize(record.get("Trip number").trim())
                     ))
                     .collect(Collectors.toList());
@@ -124,15 +124,9 @@ public class TransfersListGenerator {
     private List<BankTransferDetails> convertBusinessTripData(
             List<BusinessTripDetails> businessTrips, List<InvoiceDetails> existingInvoiceDetails
     ) {
-        // Validate with existing bank accounts
-        Set<String> validBankAccounts = existingInvoiceDetails.stream()
-                .map(InvoiceDetails::bankAccount)
-                .collect(Collectors.toSet());
-
         return businessTrips.stream()
-                .filter(trip -> validBankAccounts.contains(trip.bankAccount()))
                 .map(trip -> new BankTransferDetails(
-                        "", // Short name empty
+                        null, // Short name empty
                         trip.bankAccount(),
                         trip.name(),
                         "", "", "", // Address lines empty
