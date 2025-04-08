@@ -1,0 +1,4 @@
+No;Name;Bank account number;Amount;Trip number;Status;Department;Description
+1;John Smith;12 3456 7890 1234 5678 9012 3456;PLN 1500,00;TRIP/2023/001;PENDING;Sales;Business trip to Berlin
+2;Jane Doe;34 5678 9012 3456 7890 1234 5678;PLN 2300,50;TRIP/2023/002;TO PAY;Marketing;Conference in Paris
+3;Michael Johnson;56 7890 1234 5678 9012 3456 7890;PLN 975,25;TRIP/2023/003;Completed;R&D;Training in London 
