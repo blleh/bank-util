@@ -26,10 +26,10 @@ public class TransfersListGenerator {
     private static final class Config {
         static final List<String> PENDING_STATUS = List.of("PENDING", "TO PAY");
         static final Pattern REIMBURSEMENT_PATTERN = Pattern.compile(
-                "Reimbursement to the employee (.+?)\\s+(\\d{2} \\d{4} \\d{4} \\d{4} \\d{4} \\d{4} \\d{4})");
+                "Expenses reimbursement to the employee (.+?)\\s+(\\d{2} \\d{4} \\d{4} \\d{4} \\d{4} \\d{4} \\d{4})");
         static final String CSV_DELIMITER = ";";
         static final String AMOUNT_PREFIX = "PLN";
-        static final String REIMBURSEMENT_PREFIX = "reimbursement";
+        static final String REIMBURSEMENT_PREFIX = "expenses reimbursement";
         static final String REIMBURSEMENT_TITLE_PREFIX = "Reimbursement - ";
     }
 
