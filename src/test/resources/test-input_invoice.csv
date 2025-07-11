@@ -1,5 +1,5 @@
-﻿No;Company name (Invoice);Company name (White list);Invoice number;NIP;Bank account number; Amount ;Payment deadline;Is the counterparty on the white list?;Status;P&S Unit Cost centre;Description;Regular payment
-1;ABC Company Ltd;ABC COMPANY LTD;INV/2023/001;1234567890;11 2222 3333 4444 5555 6666 7777; PLN 123,80 ;15,02;YES;PENDING;Office;Office supplies;X
-2;XYZ Services;XYZ SERVICES SP. Z O.O.;INV/2023/002;0987654321;22 3333 4444 5555 6666 7777 8888; PLN 4567,09 ;15,02;YES;TO PAY;Office;Consulting services;X
-3;TechPro Solutions;TECHPRO SOLUTIONS S.A.;INV/2023/003;5647382910;33 4444 5555 6666 7777 8888 9999; PLN 890,50 ;20,02;YES;Paid 05.02;IT;Software licenses;
+﻿No	Company name (Invoice)	Company name (White list)	Invoice number	NIP	Bank account number	Amount	Payment deadline	Is the counterparty on the white list?	Status	P&S Unit Cost centre	Description	Regular payment
+1	ABC Company Ltd	ABC COMPANY LTD	INV/2023/001	1234567890	11 2222 3333 4444 5555 6666 7777	PLN 123,80	15,02	YES	PENDING	Office	Office supplies	X
+2	XYZ Services	XYZ SERVICES SP. Z O.O.	INV/2023/002	0987654321	22 3333 4444 5555 6666 7777 8888	PLN 4567,09	15,02	YES	TO PAY	Office	Consulting services	X
+3	TechPro Solutions	TECHPRO SOLUTIONS S.A.	INV/2023/003	5647382910	33 4444 5555 6666 7777 8888 9999	PLN 890,50	20,02	YES	Paid 05.02	IT	Software licenses	
 

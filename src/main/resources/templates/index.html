@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bank Transfer List Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 900px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+            line-height: 1.6;
+        }
+
+        .form-group {
+            margin-bottom: 30px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 10px;
+            color: #333;
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+
+        .form-group .description {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+            line-height: 1.4;
+        }
+
+        .csv-textarea {
+            width: 100%;
+            height: 200px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            resize: vertical;
+            transition: border-color 0.3s ease;
+        }
+
+        .csv-textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .generate-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.1em;
+            font-weight: 600;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .generate-btn:active {
+            transform: translateY(0);
+        }
+
+        .generate-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #fee;
+            color: #d00;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border: 1px solid #fcc;
+            display: none;
+        }
+
+        .success {
+            background: #efe;
+            color: #060;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border: 1px solid #cfc;
+            display: none;
+        }
+
+        .example-toggle {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 10px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .example-toggle:hover {
+            background: #e9ecef;
+        }
+
+        .example-content {
+            display: none;
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+
+        .example-content pre {
+            background: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 11px;
+            overflow-x: auto;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💳 Bank Transfer List Generator</h1>
+            <p>Generate bank transfer lists from invoice and business trip data.<br>
+               Simply copy and paste your CSV data below and click generate.</p>
+        </div>
+
+        <form id="bankTransferForm">
+            <div class="form-group">
+                <label for="invoiceCsv">📋 Invoice Data (Required)</label>
+                <div class="description">
+                    Copy and paste your invoice CSV data here. Include the header row.
+                    Only records with status "PENDING" or "TO PAY" will be processed.
+                </div>
+                <textarea id="invoiceCsv" class="csv-textarea" placeholder="Paste your invoice CSV data here...&#10;Example (tab-separated):&#10;No	Company name (Invoice)	Company name (White list)	Invoice number	NIP	Bank account number	Amount	Payment deadline	Is the counterparty on the white list?	Status	P&S Unit Cost centre	Description	Regular payment&#10;1	ABC Company Ltd	ABC COMPANY LTD	INV/2023/001	1234567890	11 2222 3333 4444 5555 6666 7777	PLN 123,80	15,02	YES	PENDING	Office	Office supplies	X"></textarea>
+                
+                <div class="example-toggle" onclick="toggleExample('invoiceExample')">
+                    <strong>📖 Show Invoice CSV Example</strong>
+                </div>
+                                 <div id="invoiceExample" class="example-content">
+                     <pre>No	Company name (Invoice)	Company name (White list)	Invoice number	NIP	Bank account number	Amount	Payment deadline	Is the counterparty on the white list?	Status	P&S Unit Cost centre	Description	Regular payment
+1	ABC Company Ltd	ABC COMPANY LTD	INV/2023/001	1234567890	11 2222 3333 4444 5555 6666 7777	PLN 123,80	15,02	YES	PENDING	Office	Office supplies	X
+2	XYZ Services	XYZ SERVICES SP. Z O.O.	INV/2023/002	0987654321	22 3333 4444 5555 6666 7777 8888	PLN 4567,09	15,02	YES	TO PAY	Office	Consulting services	X</pre>
+                 </div>
+            </div>
+
+            <div class="form-group">
+                <label for="businessTripCsv">✈️ Business Trip Data (Optional)</label>
+                <div class="description">
+                    Copy and paste your business trip CSV data here if you have any.
+                    This field is optional and can be left empty.
+                </div>
+                <textarea id="businessTripCsv" class="csv-textarea" placeholder="Paste your business trip CSV data here (optional)...&#10;Example (tab-separated):&#10;No	Name	Bank account number	Amount	Trip number	Status	Department	Description&#10;1	John Smith	12 3456 7890 1234 5678 9012 3456	PLN 1500,00	TRIP/2023/001	PENDING	Sales	Business trip to Berlin"></textarea>
+                
+                <div class="example-toggle" onclick="toggleExample('businessTripExample')">
+                    <strong>📖 Show Business Trip CSV Example</strong>
+                </div>
+                                 <div id="businessTripExample" class="example-content">
+                     <pre>No	Name	Bank account number	Amount	Trip number	Status	Department	Description
+1	John Smith	12 3456 7890 1234 5678 9012 3456	PLN 1500,00	TRIP/2023/001	PENDING	Sales	Business trip to Berlin
+2	Jane Doe	34 5678 9012 3456 7890 1234 5678	PLN 2300,50	TRIP/2023/002	TO PAY	Marketing	Conference in Paris</pre>
+                 </div>
+            </div>
+
+            <button type="submit" class="generate-btn" id="generateBtn">
+                🚀 Generate Preview
+            </button>
+        </form>
+
+        <div class="loading" id="loading">
+            <div class="loading-spinner"></div>
+            <p>Processing your data...</p>
+        </div>
+
+        <div class="error" id="errorMessage"></div>
+        <div class="success" id="successMessage"></div>
+
+        <!-- Preview Section -->
+        <div id="previewSection" style="display: none;">
+            <div style="background: #f8f9fa; border-radius: 15px; padding: 30px; margin-top: 30px; border: 1px solid #dee2e6;">
+                <h2 style="color: #333; margin-bottom: 20px; display: flex; align-items: center;">
+                    <span style="margin-right: 10px;">👀</span>
+                    Preview Bank Transfer List
+                </h2>
+                
+                <div id="previewSummary" style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+                        <div>
+                            <h3 style="color: #667eea; margin-bottom: 5px;">📊 Summary</h3>
+                            <p style="color: #666; margin: 0;">
+                                <strong id="transferCount">0</strong> transfers • 
+                                Total: <strong style="color: #28a745;">PLN <span id="totalAmount">0.00</span></strong>
+                            </p>
+                        </div>
+                        <div>
+                            <button id="downloadBtn" class="generate-btn" style="width: auto; margin: 0; padding: 12px 30px;">
+                                💾 Download File
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                    <div style="background: #667eea; color: white; padding: 15px; font-weight: 600;">
+                        Transfer Details
+                    </div>
+                    <div id="previewTable" style="max-height: 400px; overflow-y: auto;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleExample(id) {
+            const element = document.getElementById(id);
+            const isVisible = element.style.display === 'block';
+            element.style.display = isVisible ? 'none' : 'block';
+        }
+
+        document.getElementById('bankTransferForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const invoiceCsv = document.getElementById('invoiceCsv').value.trim();
+            const businessTripCsv = document.getElementById('businessTripCsv').value.trim();
+            
+            // Hide previous messages and preview
+            document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('successMessage').style.display = 'none';
+            document.getElementById('previewSection').style.display = 'none';
+            
+            // Validation
+            if (!invoiceCsv) {
+                showError('Please enter invoice CSV data.');
+                return;
+            }
+            
+            await generatePreview(invoiceCsv, businessTripCsv);
+        });
+
+        async function generatePreview(invoiceCsv, businessTripCsv) {
+            // Show loading
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('generateBtn').disabled = true;
+            
+            try {
+                const response = await fetch('/preview', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        invoiceCsv: invoiceCsv,
+                        businessTripCsv: businessTripCsv
+                    })
+                });
+                
+                if (response.ok) {
+                    const previewData = await response.json();
+                    displayPreview(previewData);
+                    
+                    // Setup download button
+                    document.getElementById('downloadBtn').onclick = function() {
+                        downloadFile(invoiceCsv, businessTripCsv);
+                    };
+                    
+                    showSuccess('Preview generated successfully! Review the transfers below and click "Download File" to save.');
+                } else {
+                    const errorText = await response.text();
+                    showError('Error generating preview: ' + errorText);
+                }
+            } catch (error) {
+                showError('Network error: ' + error.message);
+            } finally {
+                // Hide loading
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('generateBtn').disabled = false;
+            }
+        }
+
+        function displayPreview(previewData) {
+            // Update summary
+            document.getElementById('transferCount').textContent = previewData.transferCount;
+            document.getElementById('totalAmount').textContent = parseFloat(previewData.totalAmount).toFixed(2);
+            
+            // Generate table
+            const tableHtml = `
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+                            <th style="padding: 12px; text-align: left; border-bottom: 1px solid #dee2e6;">Company</th>
+                            <th style="padding: 12px; text-align: left; border-bottom: 1px solid #dee2e6;">Bank Account</th>
+                            <th style="padding: 12px; text-align: left; border-bottom: 1px solid #dee2e6;">Title</th>
+                            <th style="padding: 12px; text-align: right; border-bottom: 1px solid #dee2e6;">Amount (PLN)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${previewData.transfers.map((transfer, index) => `
+                            <tr style="border-bottom: 1px solid #dee2e6; ${index % 2 === 0 ? 'background: #f8f9fa;' : ''}">
+                                <td style="padding: 12px; border-bottom: 1px solid #dee2e6;">${transfer.companyAddressLine1 || 'N/A'}</td>
+                                <td style="padding: 12px; border-bottom: 1px solid #dee2e6; font-family: monospace;">${transfer.bankAccount}</td>
+                                <td style="padding: 12px; border-bottom: 1px solid #dee2e6;">${transfer.title}</td>
+                                <td style="padding: 12px; text-align: right; border-bottom: 1px solid #dee2e6; font-weight: bold;">${parseFloat(transfer.transferAmount).toFixed(2)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            
+            document.getElementById('previewTable').innerHTML = tableHtml;
+            document.getElementById('previewSection').style.display = 'block';
+            
+            // Auto-scroll to preview section with smooth animation
+            setTimeout(() => {
+                document.getElementById('previewSection').scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'start' 
+                });
+            }, 100); // Small delay to ensure the section is visible before scrolling
+        }
+
+        async function downloadFile(invoiceCsv, businessTripCsv) {
+            document.getElementById('downloadBtn').disabled = true;
+            document.getElementById('downloadBtn').textContent = '⏳ Downloading...';
+            
+            try {
+                const response = await fetch('/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        invoiceCsv: invoiceCsv,
+                        businessTripCsv: businessTripCsv
+                    })
+                });
+                
+                if (response.ok) {
+                    // Get the filename from the response headers
+                    const contentDisposition = response.headers.get('Content-Disposition');
+                    const filename = contentDisposition ? 
+                        contentDisposition.split('filename=')[1].replace(/"/g, '') : 
+                        'bank_transfer_list.csv';
+                    
+                    // Download the file
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                    
+                    showSuccess('Bank transfer list downloaded successfully!');
+                } else {
+                    const errorText = await response.text();
+                    showError('Error downloading file: ' + errorText);
+                }
+            } catch (error) {
+                showError('Network error: ' + error.message);
+            } finally {
+                document.getElementById('downloadBtn').disabled = false;
+                document.getElementById('downloadBtn').textContent = '💾 Download File';
+            }
+        }
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+        
+        function showSuccess(message) {
+            const successDiv = document.getElementById('successMessage');
+            successDiv.textContent = message;
+            successDiv.style.display = 'block';
+        }
+    </script>
+</body>
+</html> 
