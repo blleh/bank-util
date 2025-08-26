@@ -28,11 +28,11 @@ public class TransfersListGenerator {
     private static final class Config {
         static final List<String> PENDING_STATUS = List.of("PENDING", "TO PAY");
         static final Pattern REIMBURSEMENT_PATTERN = Pattern.compile(
-                "Expenses reimbursement to the employee (.+?)\\s+(\\d{2} \\d{4} \\d{4} \\d{4} \\d{4} \\d{4} \\d{4})");
+                "(?:Expenses )?[Rr]eimbursement to the employee (.+?)\\s+(\\d{2} \\d{4} \\d{4} \\d{4} \\d{4} \\d{4} \\d{4})");
         static final String CSV_INPUT_DELIMITER = "\t";  // Tab for input parsing
         static final String CSV_OUTPUT_DELIMITER = ";";  // Semicolon for output generation
         static final String AMOUNT_PREFIX = "PLN";
-        static final String REIMBURSEMENT_PREFIX = "expenses reimbursement";
+        static final List<String> REIMBURSEMENT_PREFIXES = List.of("expenses reimbursement", "reimbursement");
         static final String REIMBURSEMENT_TITLE_PREFIX = "Reimbursement - ";
     }
 
@@ -216,7 +216,11 @@ public class TransfersListGenerator {
             boolean isReimbursement = false;
 
             // Handle reimbursement records
-            if (bankAccount.toLowerCase().startsWith(Config.REIMBURSEMENT_PREFIX)) {
+            String bankAccountLower = bankAccount.toLowerCase();
+            boolean isReimbursementRecord = Config.REIMBURSEMENT_PREFIXES.stream()
+                    .anyMatch(prefix -> bankAccountLower.startsWith(prefix));
+            
+            if (isReimbursementRecord) {
                 Matcher matcher = Config.REIMBURSEMENT_PATTERN.matcher(bankAccount);
                 if (matcher.find()) {
                     companyName = matcher.group(1).trim();
@@ -451,6 +455,9 @@ public class TransfersListGenerator {
             return csvData;
         }
         
+        // First, handle multi-line quoted fields by removing newlines within quotes
+        csvData = fixQuotedFieldsWithNewlines(csvData);
+        
         StringBuilder result = new StringBuilder();
         String[] lines = csvData.split("\n");
         
@@ -460,6 +467,136 @@ public class TransfersListGenerator {
             // Fix embedded quotes that break CSV parsing
             processedLine = fixEmbeddedQuotes(processedLine);
             result.append(processedLine).append("\n");
+        }
+        
+        return result.toString();
+    }
+    
+    /**
+     * Fixes quoted fields that contain newlines by removing quotes and converting newlines to spaces.
+     * This is a simpler approach than trying to reconstruct multi-line CSV records.
+     */
+    private String fixQuotedFieldsWithNewlines(String csvData) {
+        if (csvData == null || csvData.trim().isEmpty()) {
+            return csvData;
+        }
+        
+        // Simple approach: find any quoted text that spans multiple lines and clean it up
+        // Pattern to match: "text with possible newlines and content"
+        Pattern quotedFieldPattern = Pattern.compile("\"([^\"]*\\n[^\"]*?)\"", Pattern.DOTALL);
+        
+        return quotedFieldPattern.matcher(csvData).replaceAll(matchResult -> {
+            // Extract the content inside quotes, replace newlines with spaces, and remove quotes
+            String content = matchResult.group(1);
+            String cleanedContent = content.replace("\n", " ").replaceAll("\\s+", " ").trim();
+            LOGGER.info("Fixed quoted field with newlines: " + cleanedContent.substring(0, Math.min(50, cleanedContent.length())) + "...");
+            return cleanedContent;
+        });
+    }
+
+    /**
+     * Fixes multi-line quoted fields by replacing newlines within quotes with spaces.
+     * Handles cases like quoted bank account numbers that span multiple lines.
+     */
+    private String fixMultiLineQuotedFields(String csvData) {
+        if (csvData == null || csvData.trim().isEmpty()) {
+            return csvData;
+        }
+        
+        StringBuilder result = new StringBuilder();
+        String[] lines = csvData.split("\n");
+        boolean foundMultiLineField = false;
+        
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+            
+            // Check if line has unclosed quoted fields
+            if (hasUnclosedQuotedField(line)) {
+                foundMultiLineField = true;
+                LOGGER.info("Found unclosed quoted field at line " + (i + 1));
+                
+                // Look for the closing quote in subsequent lines
+                StringBuilder multiLineField = new StringBuilder(line);
+                int j = i + 1;
+                
+                while (j < lines.length) {
+                    String nextLine = lines[j];
+                    multiLineField.append(" ").append(nextLine.trim());
+                    
+                    // Check if we found the closing quote
+                    if (nextLine.trim().endsWith("\"")) {
+                        // Replace the multi-line field with a single line
+                        String combinedLine = multiLineField.toString();
+                        // Clean up the quoted field by removing internal newlines
+                        combinedLine = cleanupQuotedField(combinedLine);
+                        LOGGER.info("Fixed multi-line quoted field spanning lines " + (i + 1) + " to " + (j + 1));
+                        result.append(combinedLine).append("\n");
+                        i = j; // Skip the lines we've processed
+                        break;
+                    }
+                    j++;
+                }
+                
+                // If we didn't find a closing quote, just append the original line
+                if (j >= lines.length) {
+                    result.append(line).append("\n");
+                }
+            } else {
+                result.append(line).append("\n");
+            }
+        }
+        
+        if (foundMultiLineField) {
+            LOGGER.info("Successfully processed multi-line quoted fields in invoice data");
+        }
+        
+        return result.toString();
+    }
+
+    /**
+     * Checks if a line has an unclosed quoted field.
+     */
+    private boolean hasUnclosedQuotedField(String line) {
+        if (line == null || !line.contains("\"")) {
+            return false;
+        }
+        
+        // Split by tabs and check each field
+        String[] fields = line.split("\t", -1);
+        for (String field : fields) {
+            // Check if field starts with quote but doesn't end with quote
+            if (field.startsWith("\"") && !field.endsWith("\"")) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    /**
+     * Cleans up a quoted field by removing quotes and normalizing whitespace.
+     */
+    private String cleanupQuotedField(String line) {
+        if (line == null) {
+            return line;
+        }
+        
+        // Split by tabs to process each field
+        String[] fields = line.split("\t", -1);
+        StringBuilder result = new StringBuilder();
+        
+        for (int i = 0; i < fields.length; i++) {
+            String field = fields[i];
+            
+            // If field is quoted and spans multiple lines, clean it up
+            if (field.startsWith("\"") && field.endsWith("\"")) {
+                field = field.substring(1, field.length() - 1).trim();
+            }
+            
+            result.append(field);
+            if (i < fields.length - 1) {
+                result.append("\t");
+            }
         }
         
         return result.toString();
@@ -491,6 +628,7 @@ public class TransfersListGenerator {
     /**
      * Fixes embedded quotes in CSV fields that can break parsing.
      * Handles cases like: "ASYSTA" SPÓŁKA Z... → ASYSTA SPÓŁKA Z...
+     * Also handles quoted fields with newlines.
      */
     private String fixEmbeddedQuotes(String line) {
         if (line == null || line.trim().isEmpty()) {
@@ -508,6 +646,11 @@ public class TransfersListGenerator {
             if (field.contains("\"") && !isProperlyQuoted(field)) {
                 // Remove all quotes from fields with embedded quotes
                 field = field.replace("\"", "");
+            }
+            // Check if field is properly quoted but contains newlines
+            else if (isProperlyQuoted(field) && field.contains("\n")) {
+                // Remove quotes and replace newlines with spaces
+                field = field.substring(1, field.length() - 1).replace("\n", " ").trim();
             }
             
             result.append(field);
