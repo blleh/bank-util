@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y maven
 RUN mvn clean package -DskipTests
 
 # Stage 2: Runtime stage
-FROM openjdk:19-jre-slim
+FROM maven:3.9.0-amazoncorretto-19
 
 # Set working directory
 WORKDIR /app
