@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bank Transfer List Generator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -12,8 +15,8 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Source Sans Pro', system-ui, sans-serif;
+            background: #f7f7f9;
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -23,11 +26,11 @@
 
         .container {
             background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
             max-width: 900px;
             width: 100%;
-            padding: 40px;
+            padding: 32px;
         }
 
         .header {
@@ -36,7 +39,7 @@
         }
 
         .header h1 {
-            color: #333;
+            color: rgb(0 0 60 / var(--tw-bg-opacity, 1));
             font-size: 2.5em;
             margin-bottom: 10px;
         }
@@ -80,31 +83,31 @@
 
         .csv-textarea:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: rgb(0 0 60 / var(--tw-bg-opacity, 1));
+            box-shadow: 0 0 0 3px rgba(0, 0, 60, 0.08);
         }
 
         .generate-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: rgb(0 0 60 / var(--tw-bg-opacity, 1));
             color: white;
-            border: none;
-            padding: 15px 40px;
-            font-size: 1.1em;
+            border: 1px solid rgb(0 0 60 / var(--tw-bg-opacity, 1));
+            padding: 12px 24px;
+            font-size: 1rem;
             font-weight: 600;
-            border-radius: 50px;
+            border-radius: 8px;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: background-color 0.2s ease, color 0.2s ease, transform 0.05s ease;
             width: 100%;
-            margin-top: 20px;
+            margin-top: 16px;
         }
 
         .generate-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+            background: rgb(0 0 60 / 0.9);
+            border-color: rgb(0 0 60 / 0.9);
         }
 
         .generate-btn:active {
-            transform: translateY(0);
+            transform: translateY(1px);
         }
 
         .generate-btn:disabled {
@@ -122,7 +125,7 @@
 
         .loading-spinner {
             border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
+            border-top: 4px solid rgb(0 0 60 / var(--tw-bg-opacity, 1));
             border-radius: 50%;
             width: 40px;
             height: 40px;
@@ -186,6 +189,89 @@
             overflow-x: auto;
         }
 
+        /* Quotation mark highlighting styles */
+        .quotation-warning {
+            border-color: rgb(0 0 60 / 0.6) !important;
+            box-shadow: 0 0 0 2px rgba(0, 0, 60, 0.08);
+        }
+        
+        .quotation-highlight {
+            background-color: rgba(0, 0, 60, 0.12);
+            color: rgb(0 0 60 / var(--tw-bg-opacity, 1));
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+        
+        .quotation-alert {
+            background: rgba(0, 0, 60, 0.06);
+            color: rgb(0 0 60 / var(--tw-bg-opacity, 1));
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+            border: 1px solid rgba(0, 0, 60, 0.1);
+            font-size: 0.9em;
+            display: none;
+        }
+        
+        .quotation-alert .alert-icon {
+            font-weight: bold;
+            margin-right: 8px;
+        }
+
+        /* Simple quotation warning styling */
+        .csv-textarea.has-quotes {
+            background: linear-gradient(90deg, 
+                rgba(0, 0, 60, 0.03) 0%, 
+                rgba(0, 0, 60, 0.05) 50%, 
+                rgba(0, 0, 60, 0.03) 100%);
+        }
+
+        /* Working textarea overlay highlighter */
+        .textarea-highlighter-container {
+            position: relative;
+            width: 100%;
+        }
+
+        .textarea-highlighter-container .csv-textarea {
+            background: transparent;
+            position: relative;
+            z-index: 2;
+            color: #222;
+            resize: vertical;
+        }
+
+        .textarea-highlighter-backdrop {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            right: 2px;
+            bottom: 2px;
+            margin: 0;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow: hidden;
+            color: transparent;
+            background: transparent;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .quote-highlight {
+            background-color: rgba(255, 0, 0, 0.2);
+            border-radius: 2px;
+        }
+
+        .csv-textarea.has-quotes-warning {
+            border-color: rgba(255, 0, 0, 0.5) !important;
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 20px;
@@ -212,7 +298,18 @@
                     Copy and paste your invoice CSV data here. Include the header row.
                     Only records with status "PENDING" or "TO PAY" will be processed.
                 </div>
-                <textarea id="invoiceCsv" class="csv-textarea" placeholder="Paste your invoice CSV data here...&#10;Example (tab-separated):&#10;No	Company name (Invoice)	Company name (White list)	Invoice number	NIP	Bank account number	Amount	Payment deadline	Is the counterparty on the white list?	Status	P&S Unit Cost centre	Description	Regular payment&#10;1	ABC Company Ltd	ABC COMPANY LTD	INV/2023/001	1234567890	11 2222 3333 4444 5555 6666 7777	PLN 123,80	15,02	YES	PENDING	Office	Office supplies	X"></textarea>
+                <div class="textarea-highlighter-container">
+                    <div id="invoiceHighlighter" class="textarea-highlighter-backdrop"></div>
+                    <textarea id="invoiceCsv" class="csv-textarea" placeholder="Paste your invoice CSV data here...&#10;Example (tab-separated):&#10;No	Company name (Invoice)	Company name (White list)	Invoice number	NIP	Bank account number	Amount	Payment deadline	Is the counterparty on the white list?	Status	P&S Unit Cost centre	Description	Regular payment&#10;1	ABC Company Ltd	ABC COMPANY LTD	INV/2023/001	1234567890	11 2222 3333 4444 5555 6666 7777	PLN 123,80	15,02	YES	PENDING	Office	Office supplies	X"></textarea>
+                </div>
+                <div id="invoiceQuoteInfo" style="display: none; margin-top: 8px; padding: 8px; background: rgba(255, 0, 0, 0.1); border-radius: 4px; font-size: 12px; color: #d32f2f;">
+                    <strong>Found quotes:</strong> <span id="invoiceQuoteCount">0</span> segments detected
+                </div>
+                
+                <div id="invoiceQuotationAlert" class="quotation-alert">
+                    <span class="alert-icon">⚠️</span>
+                    <strong>Double quotes detected!</strong> Text containing double quotation marks may break parsing and affect multiple lines. Please review.
+                </div>
                 
                 <div class="example-toggle" onclick="toggleExample('invoiceExample')">
                     <strong>📖 Show Invoice CSV Example</strong>
@@ -230,7 +327,18 @@
                     Copy and paste your business trip CSV data here if you have any.
                     This field is optional and can be left empty.
                 </div>
-                <textarea id="businessTripCsv" class="csv-textarea" placeholder="Paste your business trip CSV data here (optional)...&#10;Example (tab-separated):&#10;No	Name	Bank account number	Amount	Trip number	Status	Department	Description&#10;1	John Smith	12 3456 7890 1234 5678 9012 3456	PLN 1500,00	TRIP/2023/001	PENDING	Sales	Business trip to Berlin"></textarea>
+                <div class="textarea-highlighter-container">
+                    <div id="businessTripHighlighter" class="textarea-highlighter-backdrop"></div>
+                    <textarea id="businessTripCsv" class="csv-textarea" placeholder="Paste your business trip CSV data here (optional)...&#10;Example (tab-separated):&#10;No	Name	Bank account number	Amount	Trip number	Status	Department	Description&#10;1	John Smith	12 3456 7890 1234 5678 9012 3456	PLN 1500,00	TRIP/2023/001	PENDING	Sales	Business trip to Berlin"></textarea>
+                </div>
+                <div id="businessTripQuoteInfo" style="display: none; margin-top: 8px; padding: 8px; background: rgba(255, 0, 0, 0.1); border-radius: 4px; font-size: 12px; color: #d32f2f;">
+                    <strong>Found quotes:</strong> <span id="businessTripQuoteCount">0</span> segments detected
+                </div>
+                
+                <div id="businessTripQuotationAlert" class="quotation-alert">
+                    <span class="alert-icon">⚠️</span>
+                    <strong>Double quotes detected!</strong> Text containing double quotation marks may break parsing and affect multiple lines. Please review.
+                </div>
                 
                 <div class="example-toggle" onclick="toggleExample('businessTripExample')">
                     <strong>📖 Show Business Trip CSV Example</strong>
@@ -280,6 +388,11 @@
                     </div>
                 </div>
 
+                <div id="previewQuotationAlert" class="quotation-alert" style="margin-bottom: 20px;">
+                    <span class="alert-icon">⚠️</span>
+                    <strong>Double quotes detected in transfer data!</strong> Text with quotation marks is highlighted below. This may cause CSV parsing issues - please review carefully.
+                </div>
+
                 <div style="background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
                     <div style="background: #667eea; color: white; padding: 15px; font-weight: 600;">
                         Transfer Details
@@ -296,6 +409,159 @@
             const isVisible = element.style.display === 'block';
             element.style.display = isVisible ? 'none' : 'block';
         }
+
+        // Quotation mark detection/highlighting: only double quotes (") and highlight full segments
+        function hasQuotationMarks(text) {
+            if (!text) return false;
+            return /"/.test(text);
+        }
+
+        function highlightQuotesInText(text) {
+            if (!text) return '';
+            
+            // Escape HTML first
+            let escaped = text
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+            
+            // More precise quote highlighting
+            let result = '';
+            let inQuote = false;
+            let currentSegment = '';
+            
+            for (let i = 0; i < escaped.length; i++) {
+                const char = escaped[i];
+                
+                if (char === '"') {
+                    if (inQuote) {
+                        // End of quoted segment
+                        result += '<span class="quote-highlight">"' + currentSegment + '"</span>';
+                        currentSegment = '';
+                        inQuote = false;
+                    } else {
+                        // Start of quoted segment
+                        if (currentSegment) {
+                            result += currentSegment;
+                            currentSegment = '';
+                        }
+                        inQuote = true;
+                    }
+                } else {
+                    currentSegment += char;
+                }
+            }
+            
+            // Handle remaining content
+            if (inQuote) {
+                // Unmatched quote - highlight from quote to end of current line
+                const lines = currentSegment.split('\n');
+                const firstLine = lines[0];
+                const restLines = lines.slice(1).join('\n');
+                
+                result += '<span class="quote-highlight">"' + firstLine + '</span>';
+                if (restLines) {
+                    result += '\n' + restLines;
+                }
+            } else {
+                result += currentSegment;
+            }
+            
+            return result;
+        }
+
+        function syncHighlighter(textarea, highlighter) {
+            const highlighted = highlightQuotesInText(textarea.value);
+            highlighter.innerHTML = highlighted;
+            highlighter.scrollTop = textarea.scrollTop;
+            highlighter.scrollLeft = textarea.scrollLeft;
+            
+            // Ensure perfect alignment by copying computed styles
+            const computedStyle = window.getComputedStyle(textarea);
+            highlighter.style.lineHeight = computedStyle.lineHeight;
+            highlighter.style.fontSize = computedStyle.fontSize;
+            highlighter.style.fontFamily = computedStyle.fontFamily;
+            highlighter.style.letterSpacing = computedStyle.letterSpacing;
+            highlighter.style.wordSpacing = computedStyle.wordSpacing;
+        }
+
+        function countQuotedSegments(text) {
+            if (!text) return 0;
+            const pairs = (text.match(/"[^"]*"/g) || []).length;
+            const unmatched = ((text.match(/"/g) || []).length % 2 === 1) ? 1 : 0;
+            return pairs + unmatched;
+        }
+
+        function checkTextareaForQuotations(textareaId, alertId, quoteInfoId, highlighterId) {
+            const textarea = document.getElementById(textareaId);
+            const alert = document.getElementById(alertId);
+            const quoteInfo = document.getElementById(quoteInfoId);
+            const quoteCount = document.getElementById(quoteInfoId.replace('Info', 'Count'));
+            const highlighter = document.getElementById(highlighterId);
+            const text = textarea.value;
+            
+            // Update highlighter
+            if (highlighter) {
+                syncHighlighter(textarea, highlighter);
+            }
+            
+            if (hasQuotationMarks(text)) {
+                // Add visual styling to textarea
+                textarea.classList.add('quotation-warning');
+                textarea.classList.add('has-quotes-warning');
+                
+                // Show alert
+                alert.style.display = 'block';
+                
+                // Show count of quoted segments
+                const segmentCount = countQuotedSegments(text);
+                if (quoteInfo && quoteCount) {
+                    quoteCount.textContent = segmentCount;
+                    quoteInfo.style.display = 'block';
+                }
+            } else {
+                textarea.classList.remove('quotation-warning');
+                textarea.classList.remove('has-quotes-warning');
+                alert.style.display = 'none';
+                if (quoteInfo) {
+                    quoteInfo.style.display = 'none';
+                }
+            }
+        }
+
+        function setupQuotationDetection() {
+            // Setup event listeners for textareas
+            const invoiceTextarea = document.getElementById('invoiceCsv');
+            const businessTripTextarea = document.getElementById('businessTripCsv');
+
+            const invoiceHandler = function() {
+                checkTextareaForQuotations('invoiceCsv', 'invoiceQuotationAlert', 'invoiceQuoteInfo', 'invoiceHighlighter');
+            };
+            const businessTripHandler = function() {
+                checkTextareaForQuotations('businessTripCsv', 'businessTripQuotationAlert', 'businessTripQuoteInfo', 'businessTripHighlighter');
+            };
+
+            invoiceTextarea.addEventListener('input', invoiceHandler);
+            invoiceTextarea.addEventListener('scroll', () => {
+                const highlighter = document.getElementById('invoiceHighlighter');
+                if (highlighter) syncHighlighter(invoiceTextarea, highlighter);
+            });
+            
+            businessTripTextarea.addEventListener('input', businessTripHandler);
+            businessTripTextarea.addEventListener('scroll', () => {
+                const highlighter = document.getElementById('businessTripHighlighter');
+                if (highlighter) syncHighlighter(businessTripTextarea, highlighter);
+            });
+            
+            // Initial check on page load
+            checkTextareaForQuotations('invoiceCsv', 'invoiceQuotationAlert', 'invoiceQuoteInfo', 'invoiceHighlighter');
+            checkTextareaForQuotations('businessTripCsv', 'businessTripQuotationAlert', 'businessTripQuoteInfo', 'businessTripHighlighter');
+        }
+
+        // Initialize quotation detection when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            setupQuotationDetection();
+        });
 
         document.getElementById('bankTransferForm').addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -361,6 +627,10 @@
             // Update summary
             document.getElementById('transferCount').textContent = previewData.transferCount;
             document.getElementById('totalAmount').textContent = parseFloat(previewData.totalAmount).toFixed(2);
+            
+            // Hide preview quotation alert (highlighting only in inputs now)
+            const previewAlert = document.getElementById('previewQuotationAlert');
+            previewAlert.style.display = 'none';
             
             // Generate table
             const tableHtml = `

@@ -134,9 +134,9 @@ public class TransfersListGenerator {
     }
 
     private List<InvoiceDetails> readInvoiceCsv(String filePath) throws IOException {
-        try (Reader reader = Files.newBufferedReader(Paths.get(filePath), StandardCharsets.UTF_8)) {
-            return parseInvoiceCsvFromReader(reader);
-        }
+        // Read entire file content and process via the same string-based path to unify header handling
+        String csvData = Files.readString(Paths.get(filePath), StandardCharsets.UTF_8);
+        return parseInvoiceCsvFromString(csvData);
     }
 
     private List<InvoiceDetails> parseInvoiceCsvFromString(String csvData) throws IOException {
@@ -145,9 +145,46 @@ public class TransfersListGenerator {
         }
         // Preprocess CSV data to remove trailing empty columns
         String processedCsvData = removeTrailingEmptyColumns(csvData);
+        // Ensure header exists; if missing (e.g., single-row paste), prepend expected header
+        processedCsvData = ensureInvoiceHeader(processedCsvData);
         try (Reader reader = new StringReader(processedCsvData)) {
             return parseInvoiceCsvFromReader(reader);
         }
+    }
+
+    /**
+     * Ensures the invoice CSV data begins with the expected header row. If not, it prepends it.
+     * This allows processing of single-line inputs pasted without headers.
+     */
+    private String ensureInvoiceHeader(String csvData) {
+        if (csvData == null || csvData.isBlank()) {
+            return csvData;
+        }
+
+        // Quick check: if the first non-empty line contains required header columns, keep as-is
+        String[] lines = csvData.split("\n");
+        String firstNonEmpty = null;
+        for (String line : lines) {
+            if (line != null && !line.trim().isEmpty()) {
+                firstNonEmpty = line;
+                break;
+            }
+        }
+
+        if (firstNonEmpty != null) {
+            // Consider it a header if it contains the key column names
+            boolean looksLikeHeader = firstNonEmpty.contains("Company name (Invoice)")
+                    && firstNonEmpty.contains("Bank account number")
+                    && firstNonEmpty.contains("Amount")
+                    && firstNonEmpty.contains("Status");
+            if (looksLikeHeader) {
+                return csvData;
+            }
+        }
+
+        // Prepend the expected header from test resources to map columns by name
+        String expectedHeader = "No\tCompany name (Invoice)\tCompany name (White list)\tInvoice number\tNIP\tBank account number\tAmount\tPayment deadline\tIs the counterparty on the white list?\tStatus\tP&S Unit\tCost centre\tDescription\tRegular payment";
+        return expectedHeader + "\n" + csvData;
     }
 
     private List<InvoiceDetails> parseInvoiceCsvFromReader(Reader reader) throws IOException {
@@ -165,9 +202,21 @@ public class TransfersListGenerator {
             return csvParser.getRecords().stream()
                     .filter(record -> {
                         try {
-                            return record.isSet("Amount") && record.isSet("Status") && 
-                                   record.get("Amount").replace(",", "").trim().startsWith(Config.AMOUNT_PREFIX) && 
-                                   Config.PENDING_STATUS.contains(record.get("Status").trim());
+                            LOGGER.info("Parsin " + record.get("No") + " " + record.get("Amount") + " " + record.get("Status"));
+                            if (!record.isSet("Amount") || !record.isSet("Status")) {
+                                return false;
+                            }
+                        
+                            String amount = record.get("Amount").replace(",", "").trim();
+                            String status = record.get("Status").trim();
+                            
+                            // Check if amount contains PLN (either at beginning or end)
+                            boolean hasPlnAmount = amount.startsWith(Config.AMOUNT_PREFIX) || 
+                                                 amount.endsWith(Config.AMOUNT_PREFIX);
+                            
+                            boolean isPending = Config.PENDING_STATUS.contains(status);
+                            
+                            return hasPlnAmount && isPending;
                         } catch (Exception e) {
                             LOGGER.log(Level.WARNING, "Error checking invoice record status: " + record, e);
                             return false;
@@ -182,17 +231,25 @@ public class TransfersListGenerator {
                         }
                     })
                     .filter(Objects::nonNull)
+                    .peek(inv -> {
+                        try {
+                            LOGGER.info("Processed invoice row: number='" + inv.invoiceNumber() + "', company='" + inv.companyName() + "', amount='" + inv.amount() + "', account='" + inv.bankAccount() + "'");
+                        } catch (Exception ignored) { }
+                    })
                     .collect(Collectors.toList());
         }
     }
 
     private boolean isPendingPayment(CSVRecord record) {
         try {
-            String amount = record.get("Amount");
+            String amount = record.get("Amount").replace(",", "").trim();
             String status = record.get("Status").trim();
             
-            return amount.replace(",", "").trim().startsWith(Config.AMOUNT_PREFIX) && 
-                   Config.PENDING_STATUS.contains(status);
+            // Check if amount contains PLN (either at beginning or end)
+            boolean hasPlnAmount = amount.startsWith(Config.AMOUNT_PREFIX) || 
+                                 amount.endsWith(Config.AMOUNT_PREFIX);
+            
+            return hasPlnAmount && Config.PENDING_STATUS.contains(status);
         } catch (IllegalArgumentException e) {
             LOGGER.log(Level.WARNING, "Record missing required fields for pending payment check: " + record, e);
             return false;
@@ -250,10 +307,18 @@ public class TransfersListGenerator {
 
 
     private String formatAmount(String rawAmount) {
-        if (!rawAmount.startsWith(Config.AMOUNT_PREFIX)) {
+        String amountStr;
+        
+        // Handle both "PLN 123.45" and "123.45 PLN" formats
+        if (rawAmount.startsWith(Config.AMOUNT_PREFIX)) {
+            // Format: "PLN 123.45"
+            amountStr = rawAmount.substring(Config.AMOUNT_PREFIX.length()).trim();
+        } else if (rawAmount.endsWith(Config.AMOUNT_PREFIX)) {
+            // Format: "123.45 PLN"
+            amountStr = rawAmount.substring(0, rawAmount.length() - Config.AMOUNT_PREFIX.length()).trim();
+        } else {
             throw new IllegalArgumentException("Invalid amount format: " + rawAmount);
         }
-        String amountStr = rawAmount.substring(Config.AMOUNT_PREFIX.length()).trim();
         
         // Handle European number format where comma is thousands separator and period is decimal separator
         // Example: "26,978.12" should become "26978.12"
@@ -308,7 +373,7 @@ public class TransfersListGenerator {
         
         try (CSVParser csvParser = new CSVParser(reader, csvFormat)) {
             List<CSVRecord> records = csvParser.getRecords();
-            LOGGER.info("Business trip CSV parsing - found " + records.size() + " records");
+            LOGGER.info("Business trip CSV rows: " + records.size());
             
             return records.stream()
                     .filter(record -> {
@@ -335,6 +400,11 @@ public class TransfersListGenerator {
                         }
                     })
                     .filter(Objects::nonNull)
+                    .peek(trip -> {
+                        try {
+                            LOGGER.info("Processed business trip row: trip='" + trip.tripNumber() + "', name='" + trip.name() + "', amount='" + trip.amount() + "', account='" + trip.bankAccount() + "'");
+                        } catch (Exception ignored) { }
+                    })
                     .collect(Collectors.toList());
         }
     }
@@ -455,8 +525,8 @@ public class TransfersListGenerator {
             return csvData;
         }
         
-        // First, handle multi-line quoted fields by removing newlines within quotes
-        csvData = fixQuotedFieldsWithNewlines(csvData);
+        // Comprehensive preprocessing: handle all quoted field issues in one pass
+        csvData = preprocessQuotedFields(csvData);
         
         StringBuilder result = new StringBuilder();
         String[] lines = csvData.split("\n");
@@ -464,8 +534,6 @@ public class TransfersListGenerator {
         for (String line : lines) {
             // Remove trailing tabs (empty columns)
             String processedLine = line.replaceAll("\t+$", "");
-            // Fix embedded quotes that break CSV parsing
-            processedLine = fixEmbeddedQuotes(processedLine);
             result.append(processedLine).append("\n");
         }
         
@@ -473,23 +541,34 @@ public class TransfersListGenerator {
     }
     
     /**
-     * Fixes quoted fields that contain newlines by removing quotes and converting newlines to spaces.
-     * This is a simpler approach than trying to reconstruct multi-line CSV records.
+     * Comprehensive preprocessing for quoted fields that handles:
+     * 1. Multi-line quoted fields (removes newlines within quotes)
+     * 2. Embedded quotes within fields
+     * 3. Removes all quotation marks to avoid CSV parsing issues
      */
-    private String fixQuotedFieldsWithNewlines(String csvData) {
+    private String preprocessQuotedFields(String csvData) {
         if (csvData == null || csvData.trim().isEmpty()) {
             return csvData;
         }
         
-        // Simple approach: find any quoted text that spans multiple lines and clean it up
-        // Pattern to match: "text with possible newlines and content"
-        Pattern quotedFieldPattern = Pattern.compile("\"([^\"]*\\n[^\"]*?)\"", Pattern.DOTALL);
+        // Pattern to match any quoted content (including multi-line)
+        // This matches: "anything including newlines and embedded quotes"
+        Pattern quotedFieldPattern = Pattern.compile("\"(.*?)\"", Pattern.DOTALL);
         
         return quotedFieldPattern.matcher(csvData).replaceAll(matchResult -> {
-            // Extract the content inside quotes, replace newlines with spaces, and remove quotes
+            // Extract the content inside quotes
             String content = matchResult.group(1);
-            String cleanedContent = content.replace("\n", " ").replaceAll("\\s+", " ").trim();
-            LOGGER.info("Fixed quoted field with newlines: " + cleanedContent.substring(0, Math.min(50, cleanedContent.length())) + "...");
+            
+            // Clean up the content:
+            // 1. Replace newlines with spaces
+            // 2. Remove any remaining quotes
+            // 3. Normalize whitespace
+            String cleanedContent = content
+                .replace("\n", " ")           // Replace newlines with spaces
+                .replace("\"", "")            // Remove any embedded quotes
+                .replaceAll("\\s+", " ")      // Normalize whitespace
+                .trim();                      // Remove leading/trailing whitespace
+            
             return cleanedContent;
         });
     }
@@ -513,7 +592,6 @@ public class TransfersListGenerator {
             // Check if line has unclosed quoted fields
             if (hasUnclosedQuotedField(line)) {
                 foundMultiLineField = true;
-                LOGGER.info("Found unclosed quoted field at line " + (i + 1));
                 
                 // Look for the closing quote in subsequent lines
                 StringBuilder multiLineField = new StringBuilder(line);
@@ -529,7 +607,6 @@ public class TransfersListGenerator {
                         String combinedLine = multiLineField.toString();
                         // Clean up the quoted field by removing internal newlines
                         combinedLine = cleanupQuotedField(combinedLine);
-                        LOGGER.info("Fixed multi-line quoted field spanning lines " + (i + 1) + " to " + (j + 1));
                         result.append(combinedLine).append("\n");
                         i = j; // Skip the lines we've processed
                         break;
@@ -546,9 +623,6 @@ public class TransfersListGenerator {
             }
         }
         
-        if (foundMultiLineField) {
-            LOGGER.info("Successfully processed multi-line quoted fields in invoice data");
-        }
         
         return result.toString();
     }
