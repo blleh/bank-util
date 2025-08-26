@@ -1,7 +1,7 @@
 # Multi-stage Dockerfile for BankMapper Spring Boot Application
 
 # Stage 1: Build stage
-FROM openjdk:19-jdk-slim as builder
+FROM maven:3.9.0-amazoncorretto-19 as builder
 
 # Set working directory
 WORKDIR /app
