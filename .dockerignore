@@ -1,0 +1,59 @@
+# Ignore build artifacts and IDE files
+target/
+*.jar
+*.war
+*.ear
+*.class
+
+# Ignore IDE files
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.project
+.classpath
+.settings/
+
+# Ignore version control
+.git/
+.gitignore
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore logs
+*.log
+logs/
+
+# Ignore temporary files
+*.tmp
+*.temp
+*~
+
+# Ignore Maven wrapper (if present)
+.mvn/
+mvnw
+mvnw.cmd
+
+# Ignore test reports
+surefire-reports/
+failsafe-reports/
+
+# Ignore generated files
+*.ebgz
+
+# Ignore result files that are outputs
+result
+
+# Keep the input directory but ignore specific large files
+*.csv
+!src/test/resources/*.csv
+
+# Ignore backup files
+*.bak
+*.backup
+
+# Ignore documentation that's not needed in container
+README.md
