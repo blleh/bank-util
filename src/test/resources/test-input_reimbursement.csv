@@ -1,7 +1,5 @@
 ﻿No;Company name (Invoice);Company name (White list);Invoice number;NIP;Bank account number; Amount ;Payment deadline;Is the counterparty on the white list?;Status;P&S Unit Cost centre;Description;Regular payment
-1;Optician Store;OPTICIAN STORE;RECEIPT/2023/001;1234567890;"Reimbursement to the employee John Smith
-12 3456 7890 1234 5678 9012 3456"; PLN 700,00 ;07,02;YES;PENDING;Office;Prescription glasses;
-2;Medical Center;MEDICAL CENTER;RECEIPT/2023/002;0987654321;"Reimbursement to the employee Jane Doe
-34 5678 9012 3456 7890 1234 5678"; PLN 350,50 ;10,02;YES;TO PAY;Health;Medical examination;
+1;Optician Store;OPTICIAN STORE;RECEIPT/2023/001;1234567890;"Expenses reimbursement to the employee John Smith 12 3456 7890 1234 5678 9012 3456"; PLN 700,00 ;07,02;YES;PENDING;Office;Prescription glasses;
+2;Medical Center;MEDICAL CENTER;RECEIPT/2023/002;0987654321;"Expenses reimbursement to the employee Jane Doe 34 5678 9012 3456 7890 1234 5678"; PLN 350,50 ;10,02;YES;TO PAY;Health;Medical examination;
 
 
