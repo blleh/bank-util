@@ -10,7 +10,8 @@ public record InvoiceDetails(
         String bankAccount,
         String amount,
         String title,
-        boolean isReimbursement
+        boolean isReimbursement,
+        String currency
 ) {
     /**
      * Creates a valid invoice details record with input validation.
@@ -30,6 +31,9 @@ public record InvoiceDetails(
         }
         if (title == null || title.isBlank()) {
             throw new IllegalArgumentException("Title cannot be null or empty");
+        }
+        if (currency == null || currency.isBlank()) {
+            throw new IllegalArgumentException("Currency cannot be null or empty");
         }
     }
 }

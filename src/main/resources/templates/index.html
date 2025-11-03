@@ -368,36 +368,64 @@
             <div style="background: #f8f9fa; border-radius: 15px; padding: 30px; margin-top: 30px; border: 1px solid #dee2e6;">
                 <h2 style="color: #333; margin-bottom: 20px; display: flex; align-items: center;">
                     <span style="margin-right: 10px;">👀</span>
-                    Preview Bank Transfer List
+                    Preview Bank Transfer Lists
                 </h2>
                 
-                <div id="previewSummary" style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
-                        <div>
-                            <h3 style="color: #667eea; margin-bottom: 5px;">📊 Summary</h3>
-                            <p style="color: #666; margin: 0;">
-                                <strong id="transferCount">0</strong> transfers • 
-                                Total: <strong style="color: #28a745;">PLN <span id="totalAmount">0.00</span></strong>
-                            </p>
+                <!-- PLN Transfers Section -->
+                <div id="plnSection" style="margin-bottom: 30px;">
+                    <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+                            <div>
+                                <h3 style="color: #667eea; margin-bottom: 5px;">💵 PLN Transfers</h3>
+                                <p style="color: #666; margin: 0;">
+                                    <strong id="plnTransferCount">0</strong> transfers • 
+                                    Total: <strong style="color: #28a745;">PLN <span id="plnTotalAmount">0.00</span></strong>
+                                </p>
+                            </div>
+                            <div>
+                                <button id="downloadPlnBtn" class="generate-btn" style="width: auto; margin: 0; padding: 12px 30px;">
+                                    💾 Download PLN File
+                                </button>
+                            </div>
                         </div>
-                        <div>
-                            <button id="downloadBtn" class="generate-btn" style="width: auto; margin: 0; padding: 12px 30px;">
-                                💾 Download File
-                            </button>
+                    </div>
+                    <div id="plnTableContainer" style="background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                        <div style="background: #667eea; color: white; padding: 15px; font-weight: 600;">
+                            PLN Transfer Details
                         </div>
+                        <div id="plnPreviewTable" style="max-height: 400px; overflow-y: auto;"></div>
+                    </div>
+                </div>
+
+                <!-- EUR Transfers Section -->
+                <div id="eurSection" style="margin-bottom: 20px; display: none;">
+                    <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+                            <div>
+                                <h3 style="color: #4caf50; margin-bottom: 5px;">💶 EUR Transfers</h3>
+                                <p style="color: #666; margin: 0;">
+                                    <strong id="eurTransferCount">0</strong> transfers • 
+                                    Total: <strong style="color: #28a745;">EUR <span id="eurTotalAmount">0.00</span></strong>
+                                </p>
+                            </div>
+                            <div>
+                                <button id="downloadEurBtn" class="generate-btn" style="width: auto; margin: 0; padding: 12px 30px; background: #4caf50; border-color: #4caf50;">
+                                    💾 Download EUR File
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                        <div style="background: #4caf50; color: white; padding: 15px; font-weight: 600;">
+                            EUR Transfer Details (SEPA Format)
+                        </div>
+                        <div id="eurPreviewTable" style="max-height: 400px; overflow-y: auto;"></div>
                     </div>
                 </div>
 
                 <div id="previewQuotationAlert" class="quotation-alert" style="margin-bottom: 20px;">
                     <span class="alert-icon">⚠️</span>
                     <strong>Double quotes detected in transfer data!</strong> Text with quotation marks is highlighted below. This may cause CSV parsing issues - please review carefully.
-                </div>
-
-                <div style="background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                    <div style="background: #667eea; color: white; padding: 15px; font-weight: 600;">
-                        Transfer Details
-                    </div>
-                    <div id="previewTable" style="max-height: 400px; overflow-y: auto;"></div>
                 </div>
             </div>
         </div>
@@ -604,12 +632,15 @@
                     const previewData = await response.json();
                     displayPreview(previewData);
                     
-                    // Setup download button
-                    document.getElementById('downloadBtn').onclick = function() {
-                        downloadFile(invoiceCsv, businessTripCsv);
+                    // Setup download buttons
+                    document.getElementById('downloadPlnBtn').onclick = function() {
+                        downloadPlnFile(invoiceCsv, businessTripCsv);
+                    };
+                    document.getElementById('downloadEurBtn').onclick = function() {
+                        downloadEurFile(invoiceCsv, businessTripCsv);
                     };
                     
-                    showSuccess('Preview generated successfully! Review the transfers below and click "Download File" to save.');
+                    showSuccess('Preview generated successfully! Review the transfers below and download the files you need.');
                 } else {
                     const errorText = await response.text();
                     showError('Error generating preview: ' + errorText);
@@ -624,16 +655,26 @@
         }
 
         function displayPreview(previewData) {
-            // Update summary
-            document.getElementById('transferCount').textContent = previewData.transferCount;
-            document.getElementById('totalAmount').textContent = parseFloat(previewData.totalAmount).toFixed(2);
+            // Update PLN summary
+            document.getElementById('plnTransferCount').textContent = previewData.plnTransferCount;
+            document.getElementById('plnTotalAmount').textContent = parseFloat(previewData.plnTotalAmount).toFixed(2);
+            
+            // Update EUR summary and show/hide EUR section
+            const eurSection = document.getElementById('eurSection');
+            if (previewData.eurTransferCount > 0) {
+                document.getElementById('eurTransferCount').textContent = previewData.eurTransferCount;
+                document.getElementById('eurTotalAmount').textContent = parseFloat(previewData.eurTotalAmount).toFixed(2);
+                eurSection.style.display = 'block';
+            } else {
+                eurSection.style.display = 'none';
+            }
             
             // Hide preview quotation alert (highlighting only in inputs now)
             const previewAlert = document.getElementById('previewQuotationAlert');
             previewAlert.style.display = 'none';
             
-            // Generate table
-            const tableHtml = `
+            // Generate PLN table
+            const plnTableHtml = `
                 <table style="width: 100%; border-collapse: collapse;">
                     <thead>
                         <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
@@ -644,7 +685,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        ${previewData.transfers.map((transfer, index) => `
+                        ${previewData.plnTransfers.map((transfer, index) => `
                             <tr style="border-bottom: 1px solid #dee2e6; ${index % 2 === 0 ? 'background: #f8f9fa;' : ''}">
                                 <td style="padding: 12px; border-bottom: 1px solid #dee2e6;">${transfer.companyAddressLine1 || 'N/A'}</td>
                                 <td style="padding: 12px; border-bottom: 1px solid #dee2e6; font-family: monospace;">${transfer.bankAccount}</td>
@@ -656,7 +697,34 @@
                 </table>
             `;
             
-            document.getElementById('previewTable').innerHTML = tableHtml;
+            // Generate EUR table
+            const eurTableHtml = `
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+                            <th style="padding: 12px; text-align: left; border-bottom: 1px solid #dee2e6;">Company Name</th>
+                            <th style="padding: 12px; text-align: left; border-bottom: 1px solid #dee2e6;">Country</th>
+                            <th style="padding: 12px; text-align: left; border-bottom: 1px solid #dee2e6;">IBAN</th>
+                            <th style="padding: 12px; text-align: left; border-bottom: 1px solid #dee2e6;">Title</th>
+                            <th style="padding: 12px; text-align: right; border-bottom: 1px solid #dee2e6;">Amount (EUR)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${previewData.eurTransfers.map((transfer, index) => `
+                            <tr style="border-bottom: 1px solid #dee2e6; ${index % 2 === 0 ? 'background: #f8f9fa;' : ''}">
+                                <td style="padding: 12px; border-bottom: 1px solid #dee2e6;">${transfer.name}</td>
+                                <td style="padding: 12px; border-bottom: 1px solid #dee2e6; text-align: center;">${transfer.countryCode}</td>
+                                <td style="padding: 12px; border-bottom: 1px solid #dee2e6; font-family: monospace;">${transfer.iban}</td>
+                                <td style="padding: 12px; border-bottom: 1px solid #dee2e6;">${transfer.title}</td>
+                                <td style="padding: 12px; text-align: right; border-bottom: 1px solid #dee2e6; font-weight: bold;">${transfer.amount}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            
+            document.getElementById('plnPreviewTable').innerHTML = plnTableHtml;
+            document.getElementById('eurPreviewTable').innerHTML = eurTableHtml;
             document.getElementById('previewSection').style.display = 'block';
             
             // Auto-scroll to preview section with smooth animation
@@ -668,9 +736,10 @@
             }, 100); // Small delay to ensure the section is visible before scrolling
         }
 
-        async function downloadFile(invoiceCsv, businessTripCsv) {
-            document.getElementById('downloadBtn').disabled = true;
-            document.getElementById('downloadBtn').textContent = '⏳ Downloading...';
+        async function downloadPlnFile(invoiceCsv, businessTripCsv) {
+            const btn = document.getElementById('downloadPlnBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Downloading...';
             
             try {
                 const response = await fetch('/generate', {
@@ -689,7 +758,7 @@
                     const contentDisposition = response.headers.get('Content-Disposition');
                     const filename = contentDisposition ? 
                         contentDisposition.split('filename=')[1].replace(/"/g, '') : 
-                        'bank_transfer_list.csv';
+                        'bank_transfer_list_pln.ebgz';
                     
                     // Download the file
                     const blob = await response.blob();
@@ -702,16 +771,64 @@
                     document.body.removeChild(a);
                     window.URL.revokeObjectURL(url);
                     
-                    showSuccess('Bank transfer list downloaded successfully!');
+                    showSuccess('PLN bank transfer list downloaded successfully!');
                 } else {
                     const errorText = await response.text();
-                    showError('Error downloading file: ' + errorText);
+                    showError('Error downloading PLN file: ' + errorText);
                 }
             } catch (error) {
                 showError('Network error: ' + error.message);
             } finally {
-                document.getElementById('downloadBtn').disabled = false;
-                document.getElementById('downloadBtn').textContent = '💾 Download File';
+                btn.disabled = false;
+                btn.textContent = '💾 Download PLN File';
+            }
+        }
+
+        async function downloadEurFile(invoiceCsv, businessTripCsv) {
+            const btn = document.getElementById('downloadEurBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Downloading...';
+            
+            try {
+                const response = await fetch('/generate-eur', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        invoiceCsv: invoiceCsv,
+                        businessTripCsv: businessTripCsv
+                    })
+                });
+                
+                if (response.ok) {
+                    // Get the filename from the response headers
+                    const contentDisposition = response.headers.get('Content-Disposition');
+                    const filename = contentDisposition ? 
+                        contentDisposition.split('filename=')[1].replace(/"/g, '') : 
+                        'bank_transfer_list_eur.ebgz';
+                    
+                    // Download the file
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                    
+                    showSuccess('EUR bank transfer list downloaded successfully!');
+                } else {
+                    const errorText = await response.text();
+                    showError('Error downloading EUR file: ' + errorText);
+                }
+            } catch (error) {
+                showError('Network error: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '💾 Download EUR File';
             }
         }
         

@@ -2,7 +2,9 @@ package com.bankmapper.core;
 
 import model.BankTransferDetails;
 import model.BusinessTripDetails;
+import model.EurTransferDetails;
 import model.InvoiceDetails;
+import model.TransfersByCurrency;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
@@ -32,6 +34,8 @@ public class TransfersListGenerator {
         static final String CSV_INPUT_DELIMITER = "\t";  // Tab for input parsing
         static final String CSV_OUTPUT_DELIMITER = ";";  // Semicolon for output generation
         static final String AMOUNT_PREFIX = "PLN";
+        static final String EUR_PREFIX = "EUR";
+        static final List<String> SUPPORTED_CURRENCIES = List.of(AMOUNT_PREFIX, EUR_PREFIX);
         static final List<String> REIMBURSEMENT_PREFIXES = List.of("expenses reimbursement", "reimbursement");
         static final String REIMBURSEMENT_TITLE_PREFIX = "Reimbursement - ";
     }
@@ -69,18 +73,18 @@ public class TransfersListGenerator {
     }
 
     /**
-     * Generates bank transfer list content from CSV data strings.
+     * Generates PLN bank transfer list content from CSV data strings.
      * In-memory processing for web interface usage.
      *
      * @param invoiceCsvData The invoice CSV data as a string
      * @param businessTripCsvData The business trip CSV data as a string (optional)
-     * @return The generated bank transfer CSV content as a string
+     * @return The generated PLN bank transfer CSV content as a string
      * @throws RuntimeException if there are issues processing the data
      */
     public String generateFromStrings(String invoiceCsvData, String businessTripCsvData) {
         try {
-            List<BankTransferDetails> outputData = generateBankTransferData(invoiceCsvData, businessTripCsvData);
-            return generateCsvString(outputData);
+            TransfersByCurrency transfers = generateBankTransferData(invoiceCsvData, businessTripCsvData);
+            return generateCsvString(transfers.plnTransfers());
         } catch (IOException e) {
             LOGGER.log(Level.SEVERE, "Error processing CSV data", e);
             throw new RuntimeException("Failed to process CSV data", e);
@@ -88,33 +92,57 @@ public class TransfersListGenerator {
     }
 
     /**
-     * Generates bank transfer data from CSV data strings.
+     * Generates EUR bank transfer list content from CSV data strings.
+     * In-memory processing for web interface usage.
+     *
+     * @param invoiceCsvData The invoice CSV data as a string
+     * @param businessTripCsvData The business trip CSV data as a string (optional)
+     * @return The generated EUR bank transfer CSV content as a string
+     * @throws RuntimeException if there are issues processing the data
+     */
+    public String generateEurFromStrings(String invoiceCsvData, String businessTripCsvData) {
+        try {
+            TransfersByCurrency transfers = generateBankTransferData(invoiceCsvData, businessTripCsvData);
+            return generateEurCsvString(transfers.eurTransfers());
+        } catch (IOException e) {
+            LOGGER.log(Level.SEVERE, "Error processing CSV data", e);
+            throw new RuntimeException("Failed to process CSV data", e);
+        }
+    }
+
+    /**
+     * Generates bank transfer data from CSV data strings, separated by currency.
      * Returns structured data for preview purposes.
      *
      * @param invoiceCsvData The invoice CSV data as a string
      * @param businessTripCsvData The business trip CSV data as a string (optional)
-     * @return The generated bank transfer data as a list of BankTransferDetails
+     * @return The generated bank transfer data separated by currency (PLN and EUR)
      * @throws RuntimeException if there are issues processing the data
      */
-    public List<BankTransferDetails> generateBankTransferData(String invoiceCsvData, String businessTripCsvData) {
+    public TransfersByCurrency generateBankTransferData(String invoiceCsvData, String businessTripCsvData) {
         try {
             // Parse data from CSV strings
             List<InvoiceDetails> invoiceDetails = parseInvoiceCsvFromString(invoiceCsvData);
-            List<BankTransferDetails> outputData = convertInvoiceData(invoiceDetails);
-            LOGGER.info("Processed " + invoiceDetails.size() + " invoice records");
+            
+            // Separate PLN and EUR invoices
+            List<BankTransferDetails> plnTransfers = convertInvoiceData(invoiceDetails);
+            List<EurTransferDetails> eurTransfers = convertEurInvoiceData(invoiceDetails);
+            
+            LOGGER.info("Processed " + invoiceDetails.size() + " invoice records: " + 
+                       plnTransfers.size() + " PLN, " + eurTransfers.size() + " EUR");
 
-            // Handle business trip data if provided
+            // Handle business trip data if provided (always PLN)
             if (businessTripCsvData != null && !businessTripCsvData.trim().isEmpty()) {
                 LOGGER.info("Processing business trip data, length: " + businessTripCsvData.length());
                 List<BusinessTripDetails> businessTrips = parseBusinessTripCsvFromString(businessTripCsvData);
                 LOGGER.info("Parsed " + businessTrips.size() + " business trip records");
-                outputData.addAll(convertBusinessTripData(businessTrips));
+                plnTransfers.addAll(convertBusinessTripData(businessTrips));
             } else {
                 LOGGER.info("No business trip data provided");
             }
 
-            LOGGER.info("Total output records: " + outputData.size());
-            return outputData;
+            LOGGER.info("Total output records: " + plnTransfers.size() + " PLN, " + eurTransfers.size() + " EUR");
+            return new TransfersByCurrency(plnTransfers, eurTransfers);
         } catch (IOException e) {
             LOGGER.log(Level.SEVERE, "Error processing CSV data", e);
             throw new RuntimeException("Failed to process CSV data", e);
@@ -210,13 +238,13 @@ public class TransfersListGenerator {
                             String amount = record.get("Amount").replace(",", "").trim();
                             String status = record.get("Status").trim();
                             
-                            // Check if amount contains PLN (either at beginning or end)
-                            boolean hasPlnAmount = amount.startsWith(Config.AMOUNT_PREFIX) || 
-                                                 amount.endsWith(Config.AMOUNT_PREFIX);
+                            // Check if amount contains any supported currency (PLN or EUR)
+                            boolean hasSupportedCurrency = Config.SUPPORTED_CURRENCIES.stream()
+                                    .anyMatch(currency -> amount.startsWith(currency) || amount.endsWith(currency));
                             
                             boolean isPending = Config.PENDING_STATUS.contains(status);
                             
-                            return hasPlnAmount && isPending;
+                            return hasSupportedCurrency && isPending;
                         } catch (Exception e) {
                             LOGGER.log(Level.WARNING, "Error checking invoice record status: " + record, e);
                             return false;
@@ -237,22 +265,6 @@ public class TransfersListGenerator {
                         } catch (Exception ignored) { }
                     })
                     .collect(Collectors.toList());
-        }
-    }
-
-    private boolean isPendingPayment(CSVRecord record) {
-        try {
-            String amount = record.get("Amount").replace(",", "").trim();
-            String status = record.get("Status").trim();
-            
-            // Check if amount contains PLN (either at beginning or end)
-            boolean hasPlnAmount = amount.startsWith(Config.AMOUNT_PREFIX) || 
-                                 amount.endsWith(Config.AMOUNT_PREFIX);
-            
-            return hasPlnAmount && Config.PENDING_STATUS.contains(status);
-        } catch (IllegalArgumentException e) {
-            LOGGER.log(Level.WARNING, "Record missing required fields for pending payment check: " + record, e);
-            return false;
         }
     }
 
@@ -286,9 +298,10 @@ public class TransfersListGenerator {
                 }
             }
 
-            // Format amount (remove currency prefix, spaces, and standardize decimal separator)
+            // Extract currency and format amount
             String rawAmount = record.get("Amount").trim();
-            String formattedAmount = formatAmount(rawAmount);
+            String currency = extractCurrency(rawAmount);
+            String formattedAmount = formatAmount(rawAmount, currency);
 
             return new InvoiceDetails(
                     invoiceNumber,
@@ -296,7 +309,8 @@ public class TransfersListGenerator {
                     bankAccount,
                     formattedAmount,
                     isReimbursement ? Config.REIMBURSEMENT_TITLE_PREFIX + description : invoiceNumber,
-                    isReimbursement
+                    isReimbursement,
+                    currency
             );
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Error parsing invoice record: " + record, e);
@@ -306,16 +320,31 @@ public class TransfersListGenerator {
 
 
 
-    private String formatAmount(String rawAmount) {
+    /**
+     * Extracts currency code from amount string (e.g., "PLN 123.45" -> "PLN", "EUR 153.20" -> "EUR")
+     */
+    private String extractCurrency(String rawAmount) {
+        for (String currency : Config.SUPPORTED_CURRENCIES) {
+            if (rawAmount.startsWith(currency) || rawAmount.endsWith(currency)) {
+                return currency;
+            }
+        }
+        throw new IllegalArgumentException("Unsupported currency in amount: " + rawAmount);
+    }
+
+    /**
+     * Formats amount with currency detection (for invoices)
+     */
+    private String formatAmount(String rawAmount, String currency) {
         String amountStr;
         
-        // Handle both "PLN 123.45" and "123.45 PLN" formats
-        if (rawAmount.startsWith(Config.AMOUNT_PREFIX)) {
-            // Format: "PLN 123.45"
-            amountStr = rawAmount.substring(Config.AMOUNT_PREFIX.length()).trim();
-        } else if (rawAmount.endsWith(Config.AMOUNT_PREFIX)) {
-            // Format: "123.45 PLN"
-            amountStr = rawAmount.substring(0, rawAmount.length() - Config.AMOUNT_PREFIX.length()).trim();
+        // Handle both "CURRENCY 123.45" and "123.45 CURRENCY" formats
+        if (rawAmount.startsWith(currency)) {
+            // Format: "PLN 123.45" or "EUR 153.20"
+            amountStr = rawAmount.substring(currency.length()).trim();
+        } else if (rawAmount.endsWith(currency)) {
+            // Format: "123.45 PLN" or "153.20 EUR"
+            amountStr = rawAmount.substring(0, rawAmount.length() - currency.length()).trim();
         } else {
             throw new IllegalArgumentException("Invalid amount format: " + rawAmount);
         }
@@ -341,6 +370,13 @@ public class TransfersListGenerator {
         
         // Remove any remaining spaces
         return amountStr.replaceAll("\\s", "");
+    }
+
+    /**
+     * Formats amount for business trips (backward compatibility - always PLN)
+     */
+    private String formatAmount(String rawAmount) {
+        return formatAmount(rawAmount, Config.AMOUNT_PREFIX);
     }
 
     private List<BusinessTripDetails> readBusinessTripCsv(String filePath) throws IOException {
@@ -432,8 +468,12 @@ public class TransfersListGenerator {
         }
     }
 
+    /**
+     * Converts invoice data to PLN bank transfers only.
+     */
     private List<BankTransferDetails> convertInvoiceData(List<InvoiceDetails> invoiceDetails) {
         return invoiceDetails.stream()
+                .filter(data -> "PLN".equals(data.currency()))
                 .map(data -> new BankTransferDetails(
                         null, // Short name empty
                         data.bankAccount(),
@@ -443,6 +483,47 @@ public class TransfersListGenerator {
                         data.amount() // Amount already formatted during reading
                 ))
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Converts EUR invoice data to EUR transfer details.
+     */
+    private List<EurTransferDetails> convertEurInvoiceData(List<InvoiceDetails> invoiceDetails) {
+        return invoiceDetails.stream()
+                .filter(data -> "EUR".equals(data.currency()))
+                .map(data -> {
+                    String iban = data.bankAccount().replace(" ", ""); // Remove spaces from IBAN
+                    String countryCode = extractCountryCodeFromIban(iban);
+                    // Format amount with comma as decimal separator for EUR
+                    String formattedAmount = data.amount().replace(".", ",");
+                    
+                    return new EurTransferDetails(
+                            data.companyName(),
+                            countryCode,
+                            iban,
+                            formattedAmount,
+                            data.title()
+                    );
+                })
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Extracts country code from IBAN (first 2 characters).
+     * Returns "PL" if IBAN doesn't start with a letter sequence.
+     */
+    private String extractCountryCodeFromIban(String iban) {
+        if (iban == null || iban.length() < 2) {
+            return "PL";
+        }
+        
+        String prefix = iban.substring(0, 2).toUpperCase();
+        // Check if first 2 characters are letters (valid country code)
+        if (prefix.matches("[A-Z]{2}")) {
+            return prefix;
+        }
+        
+        return "PL"; // Default to PL for Polish accounts without country code
     }
 
     private List<BankTransferDetails> convertBusinessTripData(List<BusinessTripDetails> businessTrips) {
@@ -503,6 +584,35 @@ public class TransfersListGenerator {
                         record.companyAddressLine4(),
                         record.title(),
                         record.transferAmount()
+                );
+            }
+            
+            return writer.toString();
+        }
+    }
+
+    /**
+     * Generates EUR transfer CSV string with SEPA format.
+     * Format: name;country;iban;;amount;title
+     */
+    public String generateEurCsvString(List<EurTransferDetails> data) throws IOException {
+        CSVFormat csvFormat = CSVFormat.Builder.create()
+                .setDelimiter(Config.CSV_OUTPUT_DELIMITER)
+                .setQuote('"')
+                .setSkipHeaderRecord(true)
+                .build();
+        
+        try (StringWriter writer = new StringWriter();
+             CSVPrinter csvPrinter = new CSVPrinter(writer, csvFormat)) {
+
+            for (EurTransferDetails record : data) {
+                csvPrinter.printRecord(
+                        record.name(),
+                        record.countryCode(),
+                        record.iban(),
+                        "", // Ordering account - empty
+                        record.amount(),
+                        record.title()
                 );
             }
             
@@ -574,109 +684,6 @@ public class TransfersListGenerator {
     }
 
     /**
-     * Fixes multi-line quoted fields by replacing newlines within quotes with spaces.
-     * Handles cases like quoted bank account numbers that span multiple lines.
-     */
-    private String fixMultiLineQuotedFields(String csvData) {
-        if (csvData == null || csvData.trim().isEmpty()) {
-            return csvData;
-        }
-        
-        StringBuilder result = new StringBuilder();
-        String[] lines = csvData.split("\n");
-        boolean foundMultiLineField = false;
-        
-        for (int i = 0; i < lines.length; i++) {
-            String line = lines[i];
-            
-            // Check if line has unclosed quoted fields
-            if (hasUnclosedQuotedField(line)) {
-                foundMultiLineField = true;
-                
-                // Look for the closing quote in subsequent lines
-                StringBuilder multiLineField = new StringBuilder(line);
-                int j = i + 1;
-                
-                while (j < lines.length) {
-                    String nextLine = lines[j];
-                    multiLineField.append(" ").append(nextLine.trim());
-                    
-                    // Check if we found the closing quote
-                    if (nextLine.trim().endsWith("\"")) {
-                        // Replace the multi-line field with a single line
-                        String combinedLine = multiLineField.toString();
-                        // Clean up the quoted field by removing internal newlines
-                        combinedLine = cleanupQuotedField(combinedLine);
-                        result.append(combinedLine).append("\n");
-                        i = j; // Skip the lines we've processed
-                        break;
-                    }
-                    j++;
-                }
-                
-                // If we didn't find a closing quote, just append the original line
-                if (j >= lines.length) {
-                    result.append(line).append("\n");
-                }
-            } else {
-                result.append(line).append("\n");
-            }
-        }
-        
-        
-        return result.toString();
-    }
-
-    /**
-     * Checks if a line has an unclosed quoted field.
-     */
-    private boolean hasUnclosedQuotedField(String line) {
-        if (line == null || !line.contains("\"")) {
-            return false;
-        }
-        
-        // Split by tabs and check each field
-        String[] fields = line.split("\t", -1);
-        for (String field : fields) {
-            // Check if field starts with quote but doesn't end with quote
-            if (field.startsWith("\"") && !field.endsWith("\"")) {
-                return true;
-            }
-        }
-        
-        return false;
-    }
-
-    /**
-     * Cleans up a quoted field by removing quotes and normalizing whitespace.
-     */
-    private String cleanupQuotedField(String line) {
-        if (line == null) {
-            return line;
-        }
-        
-        // Split by tabs to process each field
-        String[] fields = line.split("\t", -1);
-        StringBuilder result = new StringBuilder();
-        
-        for (int i = 0; i < fields.length; i++) {
-            String field = fields[i];
-            
-            // If field is quoted and spans multiple lines, clean it up
-            if (field.startsWith("\"") && field.endsWith("\"")) {
-                field = field.substring(1, field.length() - 1).trim();
-            }
-            
-            result.append(field);
-            if (i < fields.length - 1) {
-                result.append("\t");
-            }
-        }
-        
-        return result.toString();
-    }
-
-    /**
      * Preprocesses business trip CSV data differently from invoices.
      * Business trips have multi-line descriptions that need to be handled carefully.
      */
@@ -697,60 +704,6 @@ public class TransfersListGenerator {
         }
         
         return result.toString();
-    }
-
-    /**
-     * Fixes embedded quotes in CSV fields that can break parsing.
-     * Handles cases like: "ASYSTA" SPÓŁKA Z... → ASYSTA SPÓŁKA Z...
-     * Also handles quoted fields with newlines.
-     */
-    private String fixEmbeddedQuotes(String line) {
-        if (line == null || line.trim().isEmpty()) {
-            return line;
-        }
-        
-        // Split by tabs to process each field
-        String[] fields = line.split("\t", -1);
-        StringBuilder result = new StringBuilder();
-        
-        for (int i = 0; i < fields.length; i++) {
-            String field = fields[i];
-            
-            // Check if field has problematic embedded quotes
-            if (field.contains("\"") && !isProperlyQuoted(field)) {
-                // Remove all quotes from fields with embedded quotes
-                field = field.replace("\"", "");
-            }
-            // Check if field is properly quoted but contains newlines
-            else if (isProperlyQuoted(field) && field.contains("\n")) {
-                // Remove quotes and replace newlines with spaces
-                field = field.substring(1, field.length() - 1).replace("\n", " ").trim();
-            }
-            
-            result.append(field);
-            if (i < fields.length - 1) {
-                result.append("\t");
-            }
-        }
-        
-        return result.toString();
-    }
-
-    /**
-     * Checks if a field is properly quoted (starts and ends with quotes, no embedded quotes).
-     */
-    private boolean isProperlyQuoted(String field) {
-        if (field.length() < 2) {
-            return false;
-        }
-        
-        if (field.startsWith("\"") && field.endsWith("\"")) {
-            // Check if there are any quotes in the middle
-            String middle = field.substring(1, field.length() - 1);
-            return !middle.contains("\"");
-        }
-        
-        return false;
     }
 
 
