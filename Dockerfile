@@ -1,7 +1,7 @@
 # Multi-stage Dockerfile for BankMapper Spring Boot Application
 
 # Stage 1: Build stage
-FROM openjdk:19-jdk-slim as builder
+FROM eclipse-temurin:21-jdk as builder
 
 # Set working directory
 WORKDIR /app
@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y maven
 RUN mvn clean package -DskipTests
 
 # Stage 2: Runtime stage
-FROM openjdk:19-jre-slim
+FROM eclipse-temurin:21-jre
 
 # Set working directory
 WORKDIR /app
